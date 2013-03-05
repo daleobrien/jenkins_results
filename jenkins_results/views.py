@@ -2,8 +2,10 @@
 import requests
 from django.shortcuts import HttpResponse
 from django.conf import settings
+from django.views.decorators.cache import never_cache
 
 
+@never_cache
 def result(request, project):
     '''just get the json status for a build, and return an image ...'''
 
@@ -22,7 +24,11 @@ def result(request, project):
         icon = "unknown.png"
 
     icon = __file__.replace("views.py", icon)
+    icon = icon.replace('.pngc', '.png')
+        
 
     image_data = open(icon, "rb").read()
-    return HttpResponse(image_data, mimetype="image/png")
+    r = HttpResponse(image_data, mimetype="image/png")
+    r['Cache-Control'] = 'no-cache'
+    return r
 #
