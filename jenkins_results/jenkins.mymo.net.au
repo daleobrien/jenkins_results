@@ -1,0 +1,93 @@
+
+server {
+    listen 443 ssl;
+
+    server_name jenkins.mymo.net.au;
+    listen 80;
+
+    gzip on;
+    gzip_static on;
+    gzip_min_length 1000;
+    gzip_types text/css text/plain text/javascript application/x-javascript application/x-json; 
+
+    access_log /home/www/jenkins_results_env/jenkins_results/run/logs/ssl_request.log;
+    error_log /home/www/jenkins_results_env/jenkins_results/run/logs/ssl_error.log;
+
+    ssl_certificate      /etc/ssl/2012/wild.mymo.net.au.combined;
+    ssl_certificate_key  /etc/ssl/2012/wild.mymo.net.au.key;
+
+    location / {
+        access_log /home/www/jenkins_results_env/jenkins_results/run/logs/access.log;
+        error_log /home/www/jenkins_results_env/jenkins_results/run/logs/error.log;
+
+        uwsgi_pass_header Set-Cookie;
+        uwsgi_pass_header Authorization;
+
+        uwsgi_pass  unix:///home/www/jenkins_results_env/jenkins_results/run/jenkins_results.sock;
+        include uwsgi_params;
+
+        break;
+    }
+
+    location /s3/ {
+        expires max;
+        rewrite_log on;
+        rewrite ^(/s3/)(.*) $scheme://du2158w8fywei.cloudfront.net/$2 break ;
+
+        access_log /home/www/jenkins_results_env/jenkins_results/run/logs/s3-access.log;
+        error_log /home/www/jenkins_results_env/jenkins_results/run/logs/s3-error.log;
+        break;
+    }
+
+    location /static/ {
+        expires max;
+
+        access_log /home/www/jenkins_results_env/jenkins_results/run/logs/static-access.log;
+        error_log /home/www/jenkins_results_env/jenkins_results/run/logs/static-error.log;
+
+        alias   /home/www/jenkins_results_env/jenkins_results/static/;
+
+        break;
+    }
+
+    location /static/admin/ {
+        expires max;
+
+        access_log /home/www/jenkins_results_env/jenkins_results/run/logs/static-admin-access.log;
+        error_log /home/www/jenkins_results_env/jenkins_results/run/logs/static-admin-error.log;
+
+        autoindex on;
+        alias   /home/www/jenkins_results_env/lib/python2.6/site-packages/django/contrib/admin/media/;
+        break;
+    }
+
+   location /images/ {
+        expires max;
+
+        access_log /home/www/jenkins_results_env/jenkins_results/run/logs/static-images-access.log;
+        error_log /home/www/jenkins_results_env/jenkins_results/run/logs/static-images-error.log;
+
+        autoindex on;
+        alias   /home/www/jenkins_results_env/jenkins_results/static/jquery.ui/css/smoothness/images/;
+        break;
+   }
+
+   location /favicon.ico {
+      expires max;
+
+       access_log /home/www/jenkins_results_env/jenkins_results/run/logs/favicon-access.log;
+       error_log /home/www/jenkins_results_env/jenkins_results/run/logs/favicon-error.log;
+
+       alias  /home/www/jenkins_results_env/jenkins_results/static/img/favicon.ico;
+   }
+
+   location /nginx_status {
+     stub_status on;
+     access_log  off;
+     allow 150.101.223.125;
+     deny all;
+   }
+    
+}
+
+# vi: ft=nginx

@@ -1,0 +1,105 @@
+#! /bin/bash
+
+#### BEGIN INIT INFO
+# Provides:          uWSGI servers for Django
+# Required-Start:    networking
+# Required-Stop:     networking
+# chkconfig: - 50 50 
+# Default-Start:     2 3 4 5 
+# Default-Stop:      S 0 1 6 
+# Short-Description: Start uWSGI servers with Django. 
+# Description:       
+### END INIT INFO
+
+set -e
+
+# Folder this script is in
+SOURCE="${BASH_SOURCE[0]}"
+DIR="$( dirname "$SOURCE" )"
+while [ -h "$SOURCE" ]
+do 
+    SOURCE="$(readlink "$SOURCE")"
+    [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+    DIR="$( cd -P "$( dirname "$SOURCE"  )" && pwd )"
+done
+CURRENT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+# where the django project is in
+PROJECT_DIR=`dirname $CURRENT_DIR`
+
+# django project names/directories
+DJANGO_SITES=`basename $PROJECT_DIR`  # e.g. facebookapp
+
+# path to the directory with your django projects
+SITES_PATH=`dirname $PROJECT_DIR`  # e.g. /home/www/gonatural
+
+# path to the directory for socket and pid files
+RUNFILES_PATH=$SITES_PATH/$DJANGO_SITES/run
+
+RUNAS_UID=www
+RUNAS_GID=www
+
+CHDIR=$SITES_PATH/$DJANGO_SITES
+
+# number of worker processes
+PIDFILE=$RUNFILES_PATH/$DJANGO_SITES.pid
+SOCKET=$RUNFILES_PATH/$DJANGO_SITES.sock
+PROCESSES=5
+
+# respawn processes taking more than 20 seconds
+HARAKIRI=300
+
+# respawn processes after serving 5000 requests
+MAX_REQUESTS=5000
+
+# background the process
+UWSGI_LOG=$RUNFILES_PATH/$DJANGO_SITES.log
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+NAME=$0
+SCRIPTNAME=/etc/init.d/$NAME
+mkdir -p $RUNFILES_PATH
+
+DAEMON=$SITES_PATH/bin/uwsgi
+
+#### END CONFIGURATION
+
+# Carry out specific functions when asked to by the system
+case "$1" in
+    start)
+        echo "Starting"
+        start-stop-daemon --start --exec $DAEMON -- --chdir=$CHDIR \
+            --module=wsgi_app \
+            --env DJANGO_SETTINGS_MODULE=settings \
+            -M --pidfile=$PIDFILE \
+            --daemonize=$UWSGI_LOG \
+            --uid=$RUNAS_UID \
+            --gid=$RUNAS_GID \
+            --harakiri=$HARAKIRI \
+            --max-requests=$MAX_REQUESTS \
+            --vacuum \
+            -b 8096 \
+            --virtualenv=$SITES_PATH \
+            --socket=$SOCKET \
+            -p $PROCESSES \
+            --touch-reload=$RUNFILES_PATH/reload.txt \
+            --pythonpath=$SITES_PATH \
+            --logfile-chown
+        echo "Started $NAME"
+    ;;
+    stop)
+        echo "Stopping script uwsgi"
+        exec $DAEMON --stop $PIDFILE || echo -n " not running"
+        echo
+    ;;
+    restart)
+        echo -n "Restarting "
+        exec $DAEMON --reload $PIDFILE || echo -n " not running"
+        echo "restarted $NAME"
+    ;;
+    *)  
+        N=/etc/init.d/$NAME
+        echo "Usage: $N {start|stop|restart}" >&2
+    ;;
+esac
+exit 0
