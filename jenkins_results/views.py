@@ -10,11 +10,16 @@ def result(request, project):
     data = requests.get(settings.JENKINS_URL.format(project=project),
                         auth=(settings.JENKINS_USER, settings.JENKINS_PASS))
     response = data.json()
+    #for k, v in response.items():
+        #print k, "\r\t\t\t", v
 
     # figure out which icon
     icon = "failing.png"
     if "SUCCESS" == response['result']:
         icon = "passing.png"
+
+    if response['building']:
+        icon = "unknown.png"
 
     icon = __file__.replace("views.py", icon)
 
